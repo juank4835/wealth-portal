@@ -15,7 +15,7 @@ SCALE = 4
 S = SIZE * SCALE
 
 BLACK = (0, 0, 0, 255)
-GREEN = (0, 255, 102, 255)  # #00ff66
+GREEN = (29, 185, 84, 255)  # #1DB954 — Spotify green
 PAD = 14
 
 # === 1) Frame verde + círculo negro a supersample con LANCZOS ===
