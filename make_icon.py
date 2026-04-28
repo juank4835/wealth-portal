@@ -1,63 +1,52 @@
-"""Genera apple-touch-icon.png 180x180 con W neón sobre fondo gradiente.
+"""Genera apple-touch-icon.png 180x180.
 
-Renderiza a 4x (720x720) y reduce con LANCZOS para anti-aliasing limpio.
+Icono: bar chart skyline ascendente — 5 barras subiendo en verde
+fluorescente #00ff00 sobre fondo negro puro, con halo glow.
+Renderizado a 4x supersample y reducido con LANCZOS.
 """
-from PIL import Image, ImageDraw
-import math
+from PIL import Image, ImageDraw, ImageFilter
 
 SIZE = 180
 SCALE = 4
 S = SIZE * SCALE
 
-# 1) Fondo: gradiente radial desde verde-oscuro arriba a negro
+# Fondo negro puro
 img = Image.new('RGBA', (S, S), (0, 0, 0, 255))
-cx, cy = S * 0.5, S * 0.30
-max_r = S * 0.75
-px = img.load()
-for y in range(S):
-    for x in range(S):
-        r = math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-        t = min(1.0, r / max_r)
-        if t < 0.6:
-            f = t / 0.6
-            R = int(13 * (1 - f) + 5 * f)
-            G = int(40 * (1 - f) + 10 * f)
-            B = int(24 * (1 - f) + 7 * f)
-        else:
-            f = (t - 0.6) / 0.4
-            R = int(5 * (1 - f))
-            G = int(10 * (1 - f))
-            B = int(7 * (1 - f))
-        px[x, y] = (R, G, B, 255)
 
-# 2) Forma de la W (blanca, sobre transparente) — usada como máscara
-mask = Image.new('L', (S, S), 0)
-md = ImageDraw.Draw(mask)
-points = [(42, 50), (72, 132), (90, 90), (108, 132), (138, 50)]
-points = [(p[0] * SCALE, p[1] * SCALE) for p in points]
-WIDTH = 18 * SCALE
-for i in range(len(points) - 1):
-    md.line([points[i], points[i + 1]], fill=255, width=WIDTH)
-for p in points:
-    md.ellipse([p[0] - WIDTH // 2, p[1] - WIDTH // 2,
-                p[0] + WIDTH // 2, p[1] + WIDTH // 2], fill=255)
+# Capa del chart (sobre transparente)
+chart = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+draw = ImageDraw.Draw(chart)
 
-# 3) Gradiente vertical neón verde (00ff8a -> 00cc55)
-grad = Image.new('RGBA', (S, S))
-gpx = grad.load()
-for y in range(S):
-    f = y / S
-    R = 0
-    G = int(0xff * (1 - f) + 0xcc * f)
-    B = int(0x8a * (1 - f) + 0x55 * f)
-    for x in range(S):
-        gpx[x, y] = (R, G, B, 255)
+GREEN = (0, 255, 0, 255)
+BAR_W = 20  # ancho de cada barra (en coords 180)
+Y_BASE = 150  # baseline
+RADIUS = 4   # radio esquinas redondeadas
 
-# 4) Componer: poner el gradiente sobre el fondo usando la W como máscara
-img.paste(grad, (0, 0), mask)
+# Skyline ascendente — 5 barras: (centro_x, top_y)
+bars = [
+    (35, 122),
+    (65, 102),
+    (95, 76),
+    (125, 50),
+    (155, 28),
+]
 
-# 5) Reducir con LANCZOS para AA
+for cx, ytop in bars:
+    x1 = (cx - BAR_W // 2) * SCALE
+    x2 = (cx + BAR_W // 2) * SCALE
+    y1 = ytop * SCALE
+    y2 = Y_BASE * SCALE
+    draw.rounded_rectangle([x1, y1, x2, y2], radius=RADIUS * SCALE, fill=GREEN)
+
+# Glow halo (outer + inner)
+outer = chart.filter(ImageFilter.GaussianBlur(radius=14 * SCALE / 4))
+inner = chart.filter(ImageFilter.GaussianBlur(radius=4 * SCALE / 4))
+img.alpha_composite(outer)
+img.alpha_composite(inner)
+img.alpha_composite(chart)
+
+# Reducir con LANCZOS para anti-aliasing
 img.resize((SIZE, SIZE), Image.LANCZOS).save(
     '/Users/juank4835/Documents/wealth-portal/apple-touch-icon.png'
 )
-print(f'Saved {SIZE}x{SIZE} apple-touch-icon.png')
+print(f'Saved {SIZE}x{SIZE} apple-touch-icon.png (bar skyline)')
